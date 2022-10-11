@@ -1,0 +1,77 @@
+#modal {
+    display: none;
+}
+
+#modal > div {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    top: 10%;
+    
+    /*position: fixed;*/
+    /*left: 40%;*/
+    /*top: 10%;*/
+    /*transform: translate(-50%, -50%);*/
+    min-width: 10%;
+    min-height: 10%;
+    max-width: 75%;
+    max-height: 75%;
+    padding: 1em;
+    text-align: center;
+    background: #eee;
+    border: 1px solid black;
+    border-radius: 8px;
+    box-shadow: 3px 3px 3px 0 rgba(0, 0, 0, 0.5);
+    z-index: 100;
+}
+
+#modal:after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+}
+
+.modal-close-button {
+    margin-top: -0.4em;
+    margin-bottom: 1em;
+}
+
+.modal-close-button:before {
+    content: '\00a0';
+}
+
+.modal-close-button a {
+    display: block;
+    float: right;
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #444;
+    margin-top: -0.4em;
+    text-decoration: none;
+}
+
+.modal-close-button a:after {
+    content: ' ';
+    clear: both;
+}
+
+.modal-close-button a:hover {
+    color: #d22;
+}
+
+.display-id {font-size: 1.6em;}
+
+
+*, ::before, ::after {
+    box-sizing: inherit;
+    outline: none;
+}
+
+.fs20 {font-size: 20px;}

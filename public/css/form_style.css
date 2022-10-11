@@ -1,0 +1,23 @@
+.form-style {
+    min-width: 300px;
+}
+
+.form-style input:not([type=submit]):not([type=button]) {
+    display: block;
+    text-align: left;
+}
+
+.form-style input:not([type=checkbox]):not(.inline) {
+    width: 96%;
+    margin-top: -1px;
+    height: 30px;
+}
+
+.form-style input[type="submit"].btn, .form-style input[type="button"].btn {
+    height: 50px;
+}
+
+.form-style input:not([type=submit]):not([type=button]):not([type=file]):not([type=checkbox]) {
+    padding: 0.5em;
+    border: 1px solid #333;
+}
