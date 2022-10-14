@@ -5,7 +5,10 @@
 ```shell
 Class UndispatchedController
 
-# Calculate orders for tabular display
+# Calculate undispatched orders for tabular display
+    # NOTE - Print/Scan times come from the BARCODE database:
+    #   Date time (Print) = barcodeGenerated TS
+    #   Date time (Scan) = statusTime TS
 
     # All void orders from last 180 days
     SELECT orderID FROM BARCODE TABLE WHERE
