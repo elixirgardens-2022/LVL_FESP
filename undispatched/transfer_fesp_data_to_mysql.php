@@ -1,14 +1,18 @@
 <?php
 
+/*=========================================================================
+ * Transfer data from existing API_ORDERS database to new FESP MySQL database,
+ * and modify so that product details (title, variations, price) no longer
+ * need to be added to every order. This has greatly reduced the required
+ * database disk space.
+ *========================================================================*/
+
 // http://localhost/LVL_FESP_elixirgardens-2022/undispatched_data/transfer_fesp_data_to_mysql.php
 // http://localhost/elixirgardens-2022/LVL_FESP/undispatched/transfer_fesp_data_to_mysql.php
 
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
-// set_time_limit(40);
-// ini_set("memory_limit", "-1");
-
 
 $db_host = 'localhost';
 $db_name = 'FESP';
@@ -281,16 +285,6 @@ foreach ($api_orders as $tbl => $arr) {
                         break;
                 }
                 
-                // $lookup_sku_dates[$recs['orderId']]['sku'] = $recs['sku'];
-                
-                
-                // $lookup_sku_title_variation_price = [
-                //     'amPlayground-Sand_25_3'           => '4b097a074fdac0a4758187c95efed33164ffefe945b8ea113888b4abe8b35ac1',
-                //     'amDead_Sea_Table_(Bath)-20kg-tub' => '97137a12fbb5092b3c0f0ac5ca91204f685c58feb5b0d80caa7e7cc7681b28b6',
-                //     'amsplitcane_600_10'               => '9568f0388e7a396019ebe6913ba3c4c60d31dad7633db6d96ebb44709cb1fb47',
-                //     'am9N-OXS8-O0LD'                   => 'b1f06e9b3e5afdeeba2402ca6220bb944e2478fbbd4b1e46c3136c4925581312',
-                // ]
-                
                 $ts = $lookup_sku_dates[$recs['orderId']]['date'];
                 
                 $price = $recs['price'] / $recs['qty'];
@@ -302,6 +296,15 @@ foreach ($api_orders as $tbl => $arr) {
                 elseif (hash("sha256", $tvp) != $lookup_sku_title_variation_price[$platform.$recs['sku']]) {
                     $insert_sku_title_variation_price[] = "('$platform','$ts','{$recs['sku']}','{$recs['title']}','{$recs['variations']}','$price'),";
                 }
+                
+                // A sha256 hash function is used because it's much more efficient to compare 64 bit hashes, than 100-200 character (title, variations, price)
+                // $lookup_sku_title_variation_price = [
+                //     'amPlayground-Sand_25_3'           => '4b097a074fdac0a4758187c95efed33164ffefe945b8ea113888b4abe8b35ac1',
+                //     'amDead_Sea_Table_(Bath)-20kg-tub' => '97137a12fbb5092b3c0f0ac5ca91204f685c58feb5b0d80caa7e7cc7681b28b6',
+                //     'amsplitcane_600_10'               => '9568f0388e7a396019ebe6913ba3c4c60d31dad7633db6d96ebb44709cb1fb47',
+                //     'am9N-OXS8-O0LD'                   => 'b1f06e9b3e5afdeeba2402ca6220bb944e2478fbbd4b1e46c3136c4925581312',
+                // ]
+                
                 
                 unset($recs['title']);
                 unset($recs['variations']);
