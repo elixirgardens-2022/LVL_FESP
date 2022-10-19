@@ -1,5 +1,12 @@
 # INFO
 
+```
+Transfer data from existing API_ORDERS database to new FESP MySQL database,
+and modify so that product details (title, variations, price) no longer
+need to be added to every order. This has greatly reduced the required
+database disk space.
+```
+
 ## Updated 'PLATFORM_items' tables
 
 title, variations and price fields have been removed
