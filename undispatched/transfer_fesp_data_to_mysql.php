@@ -41,11 +41,11 @@ $tables = [
 
 
 try {
-    if ($db_mysql->exec("DROP TABLE IF EXISTS lookup_title_variation_price")) {
-        echo "Deleted lookup_title_variation_price table.<br>";
+    if ($db_mysql->exec("DROP TABLE IF EXISTS lookup_title_variation_url_price")) {
+        echo "Deleted lookup_title_variation_url_price table.<br>";
     }
     
-    $sql ="CREATE TABLE `lookup_title_variation_price` (
+    $sql ="CREATE TABLE `lookup_title_variation_url_price` (
         `autoInc`   int AUTO_INCREMENT,
         `platform`  char(2) NOT NULL,
         -- `int`       timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -58,7 +58,7 @@ try {
         PRIMARY KEY(`autoInc`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
     
-    echo "Create lookup_title_variation_price table.<br>";
+    echo "Create lookup_title_variation_url_price table.<br>";
     $db_mysql->exec($sql);
     
 } catch (PDOException $e) {
@@ -77,7 +77,6 @@ foreach ($tables as $tbl) {
         $data[] = '`total` double NOT NULL,';
         $data[] = '`currency` char(3) NOT NULL,';
         $data[] = '`date` int NOT NULL,';
-        // $data[] = '`date` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),';
         $data[] = '`buyer` varchar(255) NOT NULL,';
         $data[] = '`phone` varchar(30) NOT NULL,';
         $data[] = '`email` varchar(50) NOT NULL,';
@@ -104,9 +103,6 @@ foreach ($tables as $tbl) {
             echo "Deleted {$tbl}_items table.<br>";
         }
         
-        // $db_mysql->exec("DROP TABLE IF EXISTS {$tbl}_items");
-        // echo "Deleted {$tbl}_items table.<br>";
-        
         $data = [];
         $data[] = '`autoInc` int(8) NOT NULL AUTO_INCREMENT,';
         $data[] = '`orderId` varchar(20) NOT NULL,';
@@ -114,22 +110,11 @@ foreach ($tables as $tbl) {
         $data[] = '`itemId` varchar(20) NOT NULL,';
         $data[] = '`sku` varchar(60) NOT NULL,';
         $data[] = '`qty` int(3) NOT NULL,';
-        // if ('website' == $tbl) {$data[] = '`url` varchar(255) NOT NULL,';}
         $data[] = '`shipping` double NOT NULL,';
         $data[] = 'PRIMARY KEY (`autoInc`)';
         $data_str = implode('', $data);
         
         $sql ="CREATE TABLE IF NOT EXISTS {$tbl}_items($data_str) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
-        
-        // $sql ="CREATE TABLE IF NOT EXISTS {$tbl}_items(
-        //     `autoInc` int(8) NOT NULL AUTO_INCREMENT,
-        //     `orderId` varchar(20) NOT NULL,
-        //     `itemId` varchar(20) NOT NULL,
-        //     `sku` varchar(60) NOT NULL,
-        //     `qty` int(3) NOT NULL,
-        //     `shipping` double NOT NULL,
-        //     PRIMARY KEY (`autoInc`)
-        // ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
         
         echo "Create {$tbl}_items table.<br>";
         $db_mysql->exec($sql);
@@ -196,15 +181,11 @@ foreach ($orderIDs as $source => $vals) {
     $where_in[$source] = implode("','", $vals);
 }
 
-// echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($where_in); echo '</pre>'; die();
-
 $db_sqlite = new PDO('sqlite:data/api_orders.db3');
 
 $api_orders = [];
 foreach ($where_in as $platform => $orderIDs) {
     $sql = "SELECT * FROM {$platform}_orders WHERE `orderId` IN ('$orderIDs')";
-    
-    // echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($sql); echo '</pre>'; die();
     
     $results = $db_sqlite->query($sql);
     $api_orders["{$platform}_orders"] = $results->fetchAll(PDO::FETCH_ASSOC);
@@ -254,9 +235,6 @@ $orders_flds_a = "`orderId`,`total`,`currency`,`date`,`buyer`,`phone`,`email`,`i
 
 $items_flds = "`orderId`,`itemId`,`sku`,`qty`,`shipping`";
 $items_flds_e = "`orderId`,`ebayOrderId`,`itemId`,`sku`,`qty`,`shipping`";
-// $items_flds_w = "`orderId`,`itemId`,`sku`,`qty`,`url`,`shipping`";
-
-// echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($api_orders); echo '</pre>'; die();
 
 $lookup_sku_dates = [];
 $lookup_sku_title_variation_price = [];
@@ -281,33 +259,16 @@ foreach ($api_orders as $tbl => $arr) {
         elseif ('ebay_items' == $tbl || 'ebay_prosalt_items' == $tbl || 'floorworld_items' == $tbl) {
             $flds = $items_flds_e;
         }
-        // elseif ('website_items' == $tbl) {
-        //     $flds = $items_flds_w;
-        // }
         elseif ('_items' == substr($tbl, -6)) {
             $flds = $items_flds;
         }
-        
-        // elseif ('_items' == substr($tbl, -6)) {
-        //     $flds = 'ebay_items' == $tbl || 'ebay_prosalt_items' == $tbl || 'floorworld_items' == $tbl ? $items_flds_e : $items_flds;
-        // }
-        // elseif ('website_items' == $tbl) {
-        //     $flds = 'ebay_items' == $tbl || 'ebay_prosalt_items' == $tbl || 'floorworld_items' == $tbl ? $items_flds_e : $items_flds;
-        // }
         
         $insert = [];
         $insert_sku_title_variation_price = [];
         foreach ($arr as $i => $recs) {
             if (!$i) {
-                // if ('website_items' == $tbl) {}
-                // $mod = 'website_items' != $tbl
-                
                 $insert[] = "INSERT INTO `$tbl` ($flds) VALUES ";
-                $insert_sku_title_variation_price[] = "INSERT INTO `lookup_title_variation_price` (`platform`,`date`,`sku`,`title`,`variation`,`url`,`price`) VALUES ";
-                
-                // $flds_count = count(explode(",", $flds));
-                // $data_count = count(array_values($recs));
-                // echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($flds_count .' = '. $data_count); echo '</pre>';
+                $insert_sku_title_variation_price[] = "INSERT INTO `lookup_title_variation_url_price` (`platform`,`date`,`sku`,`title`,`variation`,`url`,`price`) VALUES ";
             }
             
             if (isset($recs['date'])) {
@@ -385,7 +346,7 @@ foreach ($api_orders as $tbl => $arr) {
         $sql_insert = str_replace("),(", "),\n(", $sql_insert);
         echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($sql_insert); echo '</pre>';
         
-        // TRUNCATE TABLE `lookup_title_variation_price`;
+        // TRUNCATE TABLE `lookup_title_variation_url_price`;
         // TRUNCATE TABLE `amazon_items`;
         
         if ('_items' == substr($tbl, -6)) {
@@ -395,5 +356,3 @@ foreach ($api_orders as $tbl => $arr) {
         $db_mysql->query($sql_insert);
     }
 }
-
-// echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($lookup_sku_title_variation_price); echo '</pre>';
