@@ -7,8 +7,9 @@
  * database disk space.
  *========================================================================*/
 
-// http://localhost/LVL_FESP_elixirgardens-2022/undispatched_data/transfer_fesp_data_to_mysql.php
-// http://localhost/elixirgardens-2022/LVL_FESP/undispatched/transfer_fesp_data_to_mysql.php
+/*
+http://localhost/elixirgardens-2022/LVL_FESP/undispatched/transfer_fesp_data_to_mysql.php
+*/
 
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
@@ -31,11 +32,11 @@ $db_mysql = new PDO(
 );
 $tables = [
     'amazon',
-    // 'ebay',
-    // 'ebay_prosalt',
-    // 'floorworld',
-    // 'onbuy',
-    // 'website',
+    'ebay',
+    'ebay_prosalt',
+    'floorworld',
+    'onbuy',
+    'website',
 ];
 
 
@@ -52,6 +53,7 @@ try {
         `sku`       varchar(60) NOT NULL,
         `title`     varchar(255) NOT NULL,
         `variation` varchar(255) NOT NULL,
+        `url` varchar(255) NOT NULL,
         `price`     double NOT NULL,
         PRIMARY KEY(`autoInc`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
@@ -92,7 +94,7 @@ foreach ($tables as $tbl) {
         $data[] = 'PRIMARY KEY (`autoInc`)';
         $data_str = implode('', $data);
         
-        $sql ="CREATE TABLE IF NOT EXISTS {$tbl}_orders($data_str) ENGINE=InnoDB DEFAULT CHARSET=utf8;;";
+        $sql ="CREATE TABLE IF NOT EXISTS {$tbl}_orders($data_str) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
         
         echo "Create {$tbl}_orders table.<br>";
         $db_mysql->exec($sql);
@@ -105,15 +107,29 @@ foreach ($tables as $tbl) {
         // $db_mysql->exec("DROP TABLE IF EXISTS {$tbl}_items");
         // echo "Deleted {$tbl}_items table.<br>";
         
-        $sql ="CREATE TABLE IF NOT EXISTS {$tbl}_items(
-            `autoInc` int(8) NOT NULL AUTO_INCREMENT,
-            `orderId` varchar(20) NOT NULL,
-            `itemId` varchar(20) NOT NULL,
-            `sku` varchar(60) NOT NULL,
-            `qty` int(3) NOT NULL,
-            `shipping` double NOT NULL,
-            PRIMARY KEY (`autoInc`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+        $data = [];
+        $data[] = '`autoInc` int(8) NOT NULL AUTO_INCREMENT,';
+        $data[] = '`orderId` varchar(20) NOT NULL,';
+        if ('ebay' == $tbl || 'ebay_prosalt' == $tbl || 'floorworld' == $tbl) {$data[] = '`ebayOrderId` varchar(20) NOT NULL,';}
+        $data[] = '`itemId` varchar(20) NOT NULL,';
+        $data[] = '`sku` varchar(60) NOT NULL,';
+        $data[] = '`qty` int(3) NOT NULL,';
+        // if ('website' == $tbl) {$data[] = '`url` varchar(255) NOT NULL,';}
+        $data[] = '`shipping` double NOT NULL,';
+        $data[] = 'PRIMARY KEY (`autoInc`)';
+        $data_str = implode('', $data);
+        
+        $sql ="CREATE TABLE IF NOT EXISTS {$tbl}_items($data_str) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+        
+        // $sql ="CREATE TABLE IF NOT EXISTS {$tbl}_items(
+        //     `autoInc` int(8) NOT NULL AUTO_INCREMENT,
+        //     `orderId` varchar(20) NOT NULL,
+        //     `itemId` varchar(20) NOT NULL,
+        //     `sku` varchar(60) NOT NULL,
+        //     `qty` int(3) NOT NULL,
+        //     `shipping` double NOT NULL,
+        //     PRIMARY KEY (`autoInc`)
+        // ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
         
         echo "Create {$tbl}_items table.<br>";
         $db_mysql->exec($sql);
@@ -147,19 +163,25 @@ SFPs:               isprime| service   | courier
 204-0257093-8893165 |  "        "           "
 */
 
-
-$json_undispatched = file('json_data/json_undispatched.php', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+$json_undispatched = file('data/json_undispatched.php', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
 $orderIDs = [];
 foreach ($json_undispatched as $i => $json_rec) {
     $json_decode = json_decode($json_rec, true);
     
-    $orderIDs[] = [
-        'orderID' => $json_decode['orderID'],
-        'source' => $json_decode['source'],
-        'channel' => $json_decode['channel'],
-        'tbl' => 'prosalt' != $json_decode['channel'] ? $json_decode['source'] : $json_decode['source'] .'_'. $json_decode['channel'],
-    ];
+    $orderIDs[$i]['orderID'] = $json_decode['orderID'];
+    $orderIDs[$i]['source']  = $json_decode['source'];
+    $orderIDs[$i]['channel'] = $json_decode['channel'];
+    
+    if ('prosalt' == $json_decode['channel']) {
+        $orderIDs[$i]['tbl'] = $json_decode['source'] .'_'. $json_decode['channel'];
+    }
+    elseif ('floorworld' == $json_decode['channel']) {
+        $orderIDs[$i]['tbl'] = $json_decode['channel'];
+    }
+    else {
+        $orderIDs[$i]['tbl'] = $json_decode['source'];
+    }
 }
 
 $tmp = [];
@@ -174,11 +196,15 @@ foreach ($orderIDs as $source => $vals) {
     $where_in[$source] = implode("','", $vals);
 }
 
-$db_sqlite = new PDO('sqlite:api_orders.db3');
+// echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($where_in); echo '</pre>'; die();
+
+$db_sqlite = new PDO('sqlite:data/api_orders.db3');
 
 $api_orders = [];
 foreach ($where_in as $platform => $orderIDs) {
     $sql = "SELECT * FROM {$platform}_orders WHERE `orderId` IN ('$orderIDs')";
+    
+    // echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($sql); echo '</pre>'; die();
     
     $results = $db_sqlite->query($sql);
     $api_orders["{$platform}_orders"] = $results->fetchAll(PDO::FETCH_ASSOC);
@@ -223,29 +249,61 @@ foreach ($where_in as $platform => $orderIDs) {
 }
 
 
-$orders_flds = "`orderId`,`total`,`currency`,`date`,`buyer`,`phone`,`email`,`service`,`shippingName`,`addressLine1`,`addressLine2`,`city`,`county`,`countryCode`,`postcode`";
+$orders_flds = "`orderId`,`total`,`currency`,`date`,`buyer`,`phone`,`email`,`service`,`shippingName`,`addressLine1`,`addressLine2`,`city`,`county`,`countryCode`,`postcode`,`message`";
 $orders_flds_a = "`orderId`,`total`,`currency`,`date`,`buyer`,`phone`,`email`,`isPrime`,`service`,`shippingName`,`addressLine1`,`addressLine2`,`city`,`county`,`countryCode`,`postcode`";
 
 $items_flds = "`orderId`,`itemId`,`sku`,`qty`,`shipping`";
+$items_flds_e = "`orderId`,`ebayOrderId`,`itemId`,`sku`,`qty`,`shipping`";
+// $items_flds_w = "`orderId`,`itemId`,`sku`,`qty`,`url`,`shipping`";
 
+// echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($api_orders); echo '</pre>'; die();
 
 $lookup_sku_dates = [];
 $lookup_sku_title_variation_price = [];
 foreach ($api_orders as $tbl => $arr) {
-    if ('amazon_orders' == $tbl || 'amazon_items' == $tbl) {
+    if (
+        'amazon_orders' == $tbl ||
+        'amazon_items' == $tbl ||
+        'ebay_orders' == $tbl ||
+        'ebay_items' == $tbl ||
+        'ebay_prosalt_orders' == $tbl ||
+        'ebay_prosalt_items' == $tbl ||
+        'floorworld_orders' == $tbl ||
+        'floorworld_items' == $tbl ||
+        'onbuy_orders' == $tbl ||
+        'onbuy_items' == $tbl ||
+        'website_orders' == $tbl ||
+        'website_items' == $tbl
+    ) {
         if ('orders' == substr($tbl, -6)) {
             $flds = 'amazon_orders' != $tbl ? $orders_flds : $orders_flds_a;
         }
+        elseif ('ebay_items' == $tbl || 'ebay_prosalt_items' == $tbl || 'floorworld_items' == $tbl) {
+            $flds = $items_flds_e;
+        }
+        // elseif ('website_items' == $tbl) {
+        //     $flds = $items_flds_w;
+        // }
         elseif ('_items' == substr($tbl, -6)) {
             $flds = $items_flds;
         }
+        
+        // elseif ('_items' == substr($tbl, -6)) {
+        //     $flds = 'ebay_items' == $tbl || 'ebay_prosalt_items' == $tbl || 'floorworld_items' == $tbl ? $items_flds_e : $items_flds;
+        // }
+        // elseif ('website_items' == $tbl) {
+        //     $flds = 'ebay_items' == $tbl || 'ebay_prosalt_items' == $tbl || 'floorworld_items' == $tbl ? $items_flds_e : $items_flds;
+        // }
         
         $insert = [];
         $insert_sku_title_variation_price = [];
         foreach ($arr as $i => $recs) {
             if (!$i) {
+                // if ('website_items' == $tbl) {}
+                // $mod = 'website_items' != $tbl
+                
                 $insert[] = "INSERT INTO `$tbl` ($flds) VALUES ";
-                $insert_sku_title_variation_price[] = "INSERT INTO `lookup_title_variation_price` (`platform`,`date`,`sku`,`title`,`variation`,`price`) VALUES ";
+                $insert_sku_title_variation_price[] = "INSERT INTO `lookup_title_variation_price` (`platform`,`date`,`sku`,`title`,`variation`,`url`,`price`) VALUES ";
                 
                 // $flds_count = count(explode(",", $flds));
                 // $data_count = count(array_values($recs));
@@ -257,8 +315,6 @@ foreach ($api_orders as $tbl => $arr) {
                     'date' => $recs['date'],
                 ];
             }
-            
-            // echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($recs); echo '</pre>'; die();
             
             if ('_items' == substr($tbl, -6)) {
                 switch (substr($tbl, 0,-6)) {
@@ -289,12 +345,14 @@ foreach ($api_orders as $tbl => $arr) {
                 
                 $price = $recs['price'] / $recs['qty'];
                 $tvp = $recs['title'].$recs['variations'].$price;
+                $url = 'website_items' != $tbl ? '' : $recs['url'];
+                
                 if (!isset($lookup_sku_title_variation_price[$platform.$recs['sku']])) {
                     $lookup_sku_title_variation_price[$platform.$recs['sku']] = hash("sha256", $tvp);
-                    $insert_sku_title_variation_price[] = "('$platform','$ts','{$recs['sku']}','{$recs['title']}','{$recs['variations']}','$price'),";
+                    $insert_sku_title_variation_price[] = "('$platform','$ts','{$recs['sku']}','{$recs['title']}','{$recs['variations']}','$url','$price'),";
                 }
                 elseif (hash("sha256", $tvp) != $lookup_sku_title_variation_price[$platform.$recs['sku']]) {
-                    $insert_sku_title_variation_price[] = "('$platform','$ts','{$recs['sku']}','{$recs['title']}','{$recs['variations']}','$price'),";
+                    $insert_sku_title_variation_price[] = "('$platform','$ts','{$recs['sku']}','{$recs['title']}','{$recs['variations']}','$url','$price'),";
                 }
                 
                 // A sha256 hash function is used because it's much more efficient to compare 64 bit hashes, than 100-200 character (title, variations, price)
@@ -309,6 +367,8 @@ foreach ($api_orders as $tbl => $arr) {
                 unset($recs['title']);
                 unset($recs['variations']);
                 unset($recs['price']);
+                
+                if (isset($recs['url'])) {unset($recs['url']);}
             }
             
             $insert[] = "('".implode("','", array_values($recs))."'),";
@@ -321,9 +381,9 @@ foreach ($api_orders as $tbl => $arr) {
         // $sql_insert_sku_title_variation_price = str_replace("),(", "),\n(", $sql_insert_sku_title_variation_price);
         // echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($sql_insert_sku_title_variation_price); echo '</pre>';
         
-        // $sql_insert = str_replace(") VALUES (", ") VALUES\n(", $sql_insert);
-        // $sql_insert = str_replace("),(", "),\n(", $sql_insert);
-        // echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($sql_insert); echo '</pre>';
+        $sql_insert = str_replace(") VALUES (", ") VALUES\n(", $sql_insert);
+        $sql_insert = str_replace("),(", "),\n(", $sql_insert);
+        echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($sql_insert); echo '</pre>';
         
         // TRUNCATE TABLE `lookup_title_variation_price`;
         // TRUNCATE TABLE `amazon_items`;
