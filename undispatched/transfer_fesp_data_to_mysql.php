@@ -1046,6 +1046,19 @@ $barcode_lookup = [
     '1249804' => 1,
 ];
 
+// $tmp = [];
+// foreach ($json_barcode as $json_str) {
+//     $rec = json_decode($json_str, true);
+    
+//     if (isset($barcode_lookup[$rec['orderID']])) {
+//         $tmp[] = $json_str;
+//     }
+// }
+// $json_barcode = implode("\n", $tmp);
+
+// echo '<pre style="background:#111; color:#b5ce28; font-size:11px;">'; print_r($json_barcode); echo '</pre>'; die();
+
+
 $orderID_len = 0;
 $courier_len = 0;
 $count = 0;
